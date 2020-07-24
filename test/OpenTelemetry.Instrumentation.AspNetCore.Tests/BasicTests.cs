@@ -27,10 +27,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using OpenTelemetry.Context.Propagation;
-using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using OpenTelemetry.Trace.Configuration;
-using OpenTelemetry.Trace.Export;
 #if NETCOREAPP2_1
 using TestApp.AspNetCore._2._1;
 #else
@@ -45,7 +42,7 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
         : IClassFixture<WebApplicationFactory<Startup>>, IDisposable
     {
         private readonly WebApplicationFactory<Startup> factory;
-        private OpenTelemetrySdk openTelemetrySdk = null;
+        private TracerProvider openTelemetrySdk = null;
 
         public BasicTests(WebApplicationFactory<Startup> factory)
         {
@@ -53,10 +50,10 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
         }
 
         [Fact]
-        public void AddRequestInstrumentation_BadArgs()
+        public void AddAspNetCoreInstrumentation_BadArgs()
         {
-            OpenTelemetryBuilder builder = null;
-            Assert.Throws<ArgumentNullException>(() => builder.AddRequestInstrumentation());
+            TracerProviderBuilder builder = null;
+            Assert.Throws<ArgumentNullException>(() => builder.AddAspNetCoreInstrumentation());
         }
 
         [Fact]
@@ -66,8 +63,8 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
             var spanProcessor = new Mock<ActivityProcessor>();
             void ConfigureTestServices(IServiceCollection services)
             {
-                this.openTelemetrySdk = OpenTelemetrySdk.EnableOpenTelemetry(
-                    (builder) => builder.AddRequestInstrumentation()
+                this.openTelemetrySdk = OpenTelemetrySdk.CreateTracerProvider(
+                    (builder) => builder.AddAspNetCoreInstrumentation()
                     .SetResource(expectedResource)
                     .AddProcessorPipeline(p => p.AddProcessor(n => spanProcessor.Object)));
             }
@@ -108,7 +105,7 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
                 .WithWebHostBuilder(builder =>
                     builder.ConfigureTestServices(services =>
                     {
-                        this.openTelemetrySdk = OpenTelemetrySdk.EnableOpenTelemetry((builder) => builder.AddRequestInstrumentation()
+                        this.openTelemetrySdk = OpenTelemetrySdk.CreateTracerProvider((builder) => builder.AddAspNetCoreInstrumentation()
                 .AddProcessorPipeline(p => p.AddProcessor(n => spanProcessor.Object)));
                     })))
             {
@@ -155,8 +152,8 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
                 .WithWebHostBuilder(builder =>
                     builder.ConfigureTestServices(services =>
                     {
-                        this.openTelemetrySdk = OpenTelemetrySdk.EnableOpenTelemetry(
-                            (builder) => builder.AddRequestInstrumentation((opt) => opt.TextFormat = textFormat.Object)
+                        this.openTelemetrySdk = OpenTelemetrySdk.CreateTracerProvider(
+                            (builder) => builder.AddAspNetCoreInstrumentation((opt) => opt.TextFormat = textFormat.Object)
                         .AddProcessorPipeline(p => p.AddProcessor(n => spanProcessor.Object)));
                     })))
             {
@@ -164,7 +161,7 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
                 var response = await client.GetAsync("/api/values/2");
                 response.EnsureSuccessStatusCode(); // Status Code 200-299
 
-                WaitForProcessorInvocations(spanProcessor, 4);
+                WaitForProcessorInvocations(spanProcessor, 2);
             }
 
             // begin and end was called once each.
@@ -187,9 +184,9 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
 
             void ConfigureTestServices(IServiceCollection services)
             {
-                this.openTelemetrySdk = OpenTelemetrySdk.EnableOpenTelemetry(
+                this.openTelemetrySdk = OpenTelemetrySdk.CreateTracerProvider(
                     (builder) =>
-                    builder.AddRequestInstrumentation((opt) => opt.RequestFilter = (ctx) => ctx.Request.Path != "/api/values/2")
+                    builder.AddAspNetCoreInstrumentation((opt) => opt.RequestFilter = (ctx) => ctx.Request.Path != "/api/values/2")
                     .AddProcessorPipeline(p => p.AddProcessor(n => spanProcessor.Object)));
             }
 
@@ -233,7 +230,7 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests
                 () =>
                 {
                     Thread.Sleep(10);
-                    return spanProcessor.Invocations.Count >= 2;
+                    return spanProcessor.Invocations.Count >= invocationCount;
                 },
                 TimeSpan.FromSeconds(1)));
         }

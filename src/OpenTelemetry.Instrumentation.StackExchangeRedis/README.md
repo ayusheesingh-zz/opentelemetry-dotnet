@@ -1,26 +1,33 @@
-# Using StackExchange.Redis instrumentation
+# StackExchange.Redis Instrumentation for OpenTelemetry .NET
 
-Outgoing calls to Redis made using `StackExchange.Redis` library can be automatically tracked.
+[![NuGet](https://img.shields.io/nuget/v/OpenTelemetry.Instrumentation.StackExchangeRedis.svg)](https://www.nuget.org/packages/OpenTelemetry.Instrumentation.StackExchangeRedis)
+[![NuGet](https://img.shields.io/nuget/dt/OpenTelemetry.Instrumentation.StackExchangeRedis.svg)](https://www.nuget.org/packages/OpenTelemetry.Instrumentation.StackExchangeRedis)
 
-1. Install package to your project:	
-   [OpenTelemetry.Instrumentation.StackExchangeRedis](https://www.nuget.org/packages/OpenTelemetry.Instrumentation.StackExchangeRedis)
+Automatically instruments the outgoing calls to Redis made using
+`StackExchange.Redis` library.
 
-2. Configure Redis instrumentation	
+## Installation
 
-    ```csharp	
-    // connect to the server	
-    var connection = ConnectionMultiplexer.Connect("localhost:6379");	
-    
-    using (TracerFactory.Create(b => b	
-                .SetSampler(new AlwaysSampleSampler())	
-                .UseZipkin(options => {})	
-                .SetResource(Resources.CreateServiceResource("my-service"))	
-                .AddInstrumentation(t =>	
-                {	
-                    var instrumentation = new StackExchangeRedisCallsInstrumentation(t);	
-                    connection.RegisterProfiler(instrumentation.GetProfilerSessionsFactory());	
-                    return instrumentation;	
-                })))	
-    {	
-    }	
-    ```
+```shell
+dotnet add package OpenTelemetry.Instrumentation.StackExchangeRedis
+```
+
+## Configuration
+
+```csharp
+// Connect to the server.
+using var connection = ConnectionMultiplexer.Connect("localhost:6379");
+
+// Pass the connection to AddRedisInstrumentation.
+using var openTelemetry = OpenTelemetrySdk.CreateTracerProvider(b => b
+    .AddRedisInstrumentation(connection)
+    .UseZipkinExporter()
+    .SetResource(Resources.CreateServiceResource("my-service"));
+```
+
+For a more detailed example see
+[TestRedis](../../examples/Console/TestRedis.cs).
+
+## References
+
+* [OpenTelemetry Project](https://opentelemetry.io/)

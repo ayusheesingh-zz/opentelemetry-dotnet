@@ -18,7 +18,7 @@ using System;
 using System.Diagnostics.Tracing;
 using System.Globalization;
 using System.Threading;
-using OpenTelemetry.Trace.Export;
+using OpenTelemetry.Trace;
 
 namespace OpenTelemetry.Internal
 {
@@ -129,7 +129,7 @@ namespace OpenTelemetry.Internal
             this.WriteEvent(6, spanName);
         }
 
-        [Event(7, Message = "Attempting to activate active span '{0}'", Level = EventLevel.Warning)]
+        [Event(7, Message = "Attempting to activate span: '{0}'", Level = EventLevel.Informational)]
         public void AttemptToActivateActiveSpan(string spanName)
         {
             this.WriteEvent(7, spanName);
@@ -183,7 +183,7 @@ namespace OpenTelemetry.Internal
             this.WriteEvent(15, spanName);
         }
 
-        [Event(16, Message = "Exception occuring while invoking Metric Observer callback. '{0}' Exception: '{1}'", Level = EventLevel.Warning)]
+        [Event(16, Message = "Exception occurring while invoking Metric Observer callback. '{0}' Exception: '{1}'", Level = EventLevel.Warning)]
         public void MetricObserverCallbackError(string metricName, string exception)
         {
             this.WriteEvent(16, metricName, exception);
@@ -223,6 +223,12 @@ namespace OpenTelemetry.Internal
         public void ForceFlushCompleted(int spansLeftUnprocessed)
         {
             this.WriteEvent(22, spansLeftUnprocessed);
+        }
+
+        [Event(23, Message = "Timeout reached waiting on SpanExporter. '{0}' spans attempted.", Level = EventLevel.Warning)]
+        public void SpanExporterTimeout(int spansAttempted)
+        {
+            this.WriteEvent(23, spansAttempted);
         }
 
         /// <summary>

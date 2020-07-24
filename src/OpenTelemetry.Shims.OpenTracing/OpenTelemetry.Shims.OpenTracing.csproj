@@ -1,9 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net452;net46;netstandard2.0</TargetFrameworks>
-    <Description>OpenTelemetry shim for OpenTracing</Description>
+    <Description>OpenTracing shim for OpenTelemetry .NET</Description>
     <PackageTags>$(PackageTags);distributed-tracing;OpenTracing</PackageTags>
     <IsPackable>true</IsPackable>
+
+    <!--
+    Uncomment for development. This will disable the verification that every public method needs to be documented.
+    //TODO: Disable this exception, and actually do document all public API.
+    -->
+
   </PropertyGroup>
     <PropertyGroup>
       <NoWarn>$(NoWarn),1591</NoWarn>

@@ -1,10 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net452;net461;netstandard2.0</TargetFrameworks>
-    <Description>Zipkin exporter for OpenTelemetry.</Description>
+    <Description>Zipkin exporter for OpenTelemetry .NET</Description>
     <PackageTags>$(PackageTags);Zipkin;distributed-tracing</PackageTags>
   </PropertyGroup>
+
   <ItemGroup>
+    <Compile Include="..\OpenTelemetry.Api\Trace\SemanticConventions.cs" />
     <Compile Include="..\OpenTelemetry\Internal\EnumerationHelper.cs" Link="Implementation\EnumerationHelper.cs" />
     <Compile Include="..\OpenTelemetry\Internal\PooledList.cs" Link="Implementation\PooledList.cs" />
   </ItemGroup>
