@@ -1,4 +1,4 @@
-// <copyright file="ProbabilityActivitySampler.cs" company="OpenTelemetry Authors">
+﻿// <copyright file="ProbabilityActivitySampler.cs" company="OpenTelemetry Authors">
 // Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,8 @@ namespace OpenTelemetry.Trace.Samplers
     /// </summary>
     public sealed class ProbabilityActivitySampler : ActivitySampler
     {
-        private readonly long idUpperBound;
-        private readonly double probability;
+        private long idUpperBound;
+        private double probability;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProbabilityActivitySampler"/> class.
@@ -99,6 +99,34 @@ namespace OpenTelemetry.Trace.Samplers
             Span<byte> traceIdBytes = stackalloc byte[16];
             samplingParameters.TraceId.CopyTo(traceIdBytes);
             return Math.Abs(this.GetLowerLong(traceIdBytes)) < this.idUpperBound ? new SamplingResult(true) : new SamplingResult(false);
+        }
+
+        public long GetIdUpperBound()
+        {
+            return this.idUpperBound;
+        }
+
+        public double GetProbability()
+        {
+            return this.probability;
+        }
+
+        public void SetProbability(double value)
+        {
+            if (value > 1)
+            {
+                this.probability = 1;
+                this.idUpperBound = long.MaxValue;
+            }
+            else if (value < 0)
+            {
+                this.probability = 0;
+                this.idUpperBound = long.MinValue;
+            }
+            else
+            {
+                this.probability = value;
+            }
         }
 
         private long GetLowerLong(ReadOnlySpan<byte> bytes)
