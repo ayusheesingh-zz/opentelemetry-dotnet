@@ -84,26 +84,30 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         [Fact]
         public void AdaptiveSampler_CheckNumItemsSampled()
         {
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(5, 0.5);
 
             int numSampled = 0;
 
-            // sends 10 events in 1 second
-            int events = 10;
-            for (int i = 0; i < events; i++)
+            // run for 200 seconds to let adaptive sampling adjust
+            for (int i = 0; i < 200; i++)
             {
-                SamplingResult result = sampler.ShouldSample(parameters);
-                if (result.IsSampled)
+                // sends 10 events in 1 second
+                int events = 10;
+                for (int j = 0; j < events; j++)
                 {
-                    numSampled += 1;
-                }
+                    SamplingResult result = sampler.ShouldSample(parameters);
+                    if (result.IsSampled)
+                    {
+                        numSampled += 1;
+                    }
 
-                Thread.Sleep(1000 / events);
+                    Thread.Sleep(1000 / events);
+                }
             }
 
-            int expectedSampled = events;
-            Assert.Equal(expectedSampled, numSampled);
+            int expectedSampled = 10;
+            Assert.Equal(expectedSampled, numSampled / 200);
         }
 
         [Fact]
@@ -111,7 +115,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         {
             double oldProbability = 0.5;
             int maxSamplesAllowed = 20;
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(maxSamplesAllowed, oldProbability);
 
             // run for 200 seconds to let adaptive sampling adjust
@@ -128,7 +132,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
 
             // since events == maxSamplesAllowed, we expect to see all sampled (probability around 1)
             double expectedProbability = 1;
-            Assert.True(expectedProbability - 0.2 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
+            Assert.True(expectedProbability - 0.1 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.1);
         }
 
         [Fact]
@@ -136,7 +140,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         {
             double oldProbability = 0.5;
             int maxSamplesAllowed = 5;
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(maxSamplesAllowed, oldProbability);
 
             // run for 200 seconds to let adaptive sampling adjust
@@ -151,9 +155,9 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
                 }
             }
 
-            // since events > maxSamplesAllowed, we expect to see less sampled (probability around 20/5 = 0.25)
+            // since events > maxSamplesAllowed, we expect to see less sampled (probability around 20/5 = 0.15)
             double expectedProbability = 0.25;
-            Assert.True(expectedProbability - 0.2 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
+            Assert.True(expectedProbability - 0.1 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.1);
         }
 
         [Fact]
@@ -161,7 +165,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         {
             double oldProbability = 0.5;
             int maxSamplesAllowed = 40;
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(maxSamplesAllowed, oldProbability);
 
             // run for 200 seconds to let adaptive sampling adjust
@@ -179,9 +183,9 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
             // since events < maxSamplesAllowed, we expect to see all sampled (probability around 1)
             double expectedProbability = 1.0;
 
-            // Assert.True(sampler.ProbSampler.GetProbability() - 0.2 < expectedProbability && expectedProbability < sampler.ProbSampler.GetProbability() + 0.2);
+            // Assert.True(sampler.ProbSampler.GetProbability() - 0.1< expectedProbability && expectedProbability < sampler.ProbSampler.GetProbability() + 0.2);
             // Assert.Equal(1.0, sampler.ProbSampler.GetProbability());
-            Assert.True(expectedProbability - 0.2 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
+            Assert.True(expectedProbability - 0.1 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.1);
         }
 
         [Fact]
@@ -189,7 +193,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         {
             double oldProbability = 0.5;
             int maxSamplesAllowed = 10; // should stay at 0.5
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(maxSamplesAllowed, oldProbability);
 
             // run for 200 seconds to let adaptive sampling adjust
@@ -214,7 +218,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
         {
             double oldProbability = 0.5;
             int maxSamplesAllowed = 10; // should stay at 0.5
-            ActivitySamplingParameters parameters = new ActivitySamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
             AdaptiveSampler sampler = new AdaptiveSampler(maxSamplesAllowed, oldProbability);
 
             // run for 200 seconds to let adaptive sampling adjust
@@ -232,7 +236,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
             // probability should be around (10/20) 0.5
             double expectedProbability = 0.5;
 
-            Assert.True(expectedProbability - 0.2 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
+            Assert.True(expectedProbability - 0.1 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
 
             // max increases, so probability should increase to around 1
             sampler.CheckMaxTelemetryItemsPerSecond(40);
@@ -251,7 +255,7 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
 
             expectedProbability = 1;
             Assert.Equal(expectedProbability, sampler.ProbSampler.GetProbability());
-            Assert.True(expectedProbability - 0.2 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
+            Assert.True(expectedProbability - 0.1 <= sampler.ProbSampler.GetProbability() && sampler.ProbSampler.GetProbability() <= expectedProbability + 0.2);
         }
 
         [Fact]
@@ -260,6 +264,99 @@ namespace OpenTelemetry.Tests.Implementation.Trace.Samplers
             DateTime currentTime = DateTime.Now;
             double epoch = (currentTime.Millisecond / TimeSpan.FromSeconds(1).TotalMilliseconds) * TimeSpan.FromSeconds(1).TotalMilliseconds;
             Assert.Equal(currentTime.Millisecond, epoch);
+        }
+
+        public long SampleThreadTest(int maxItemsAllowed, in SamplingParameters samplingParameters)
+        {
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+            AdaptiveSampler sampler = new AdaptiveSampler(maxItemsAllowed, 0.5);
+
+            // testing whole pipeline 
+            // set up my own exporter
+            // send data in loop
+            // check number of items per second
+            // compare w configuration
+
+            int numSampled = 0;
+
+            // run for 200 seconds to let adaptive sampling adjust
+            for (int i = 0; i < 200; i++)
+            {
+                // sends 10 events in 1 second
+                int events = 10;
+                for (int j = 0; j < events; j++)
+                {
+                    SamplingResult result = sampler.ShouldSample(parameters);
+                    if (result.IsSampled)
+                    {
+                        numSampled += 1;
+                    }
+
+                    Thread.Sleep(1000 / events);
+                }
+            }
+
+            return numSampled / 200;
+        }
+
+        [Fact]
+        public void AdaptiveSampling_Threads_SameNum()
+        {
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+
+            Thread[] threads = new Thread[6];
+
+            long result = 0;
+
+            for (int i = 0; i < threads.Length; i++)
+            {
+                threads[i] = new Thread(() =>
+                {
+                    result = this.SampleThreadTest(10, parameters);
+                });
+            }
+
+            foreach (Thread thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (Thread thread in threads)
+            {
+                thread.Join();
+            }
+
+            Assert.Equal(10, result);
+        }
+
+        [Fact]
+        public void AdaptiveSampling_Threads_SampleMore()
+        {
+            SamplingParameters parameters = new SamplingParameters(this.parent, this.traceId, "test", this.activityKindServer, null, null);
+
+            Thread[] threads = new Thread[6];
+
+            long result = 0;
+
+            for (int i = 0; i < threads.Length; i++)
+            {
+                threads[i] = new Thread(() =>
+                {
+                    result = this.SampleThreadTest(5, parameters);
+                });
+            }
+
+            foreach (Thread thread in threads)
+            {
+                thread.Start();
+            }
+
+            foreach (Thread thread in threads)
+            {
+                thread.Join();
+            }
+
+            Assert.Equal(5, result);
         }
     }
 }

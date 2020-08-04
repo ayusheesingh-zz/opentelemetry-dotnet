@@ -16,6 +16,7 @@
 using System;
 using System.Diagnostics;
 using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 
 namespace OpenTelemetry.Trace.Samplers
@@ -24,10 +25,10 @@ namespace OpenTelemetry.Trace.Samplers
     /// Sampler implementation which will take a sample if parent Activity or any linked Activity is sampled.
     /// Otherwise, samples traces according to the max telemetry items per second.
     /// </summary>
-    public sealed class AdaptiveSampler : ActivitySampler
+    public sealed class AdaptiveSampler : Sampler
     {
         // change to private, public for testing
-        public ProbabilityActivitySampler ProbSampler;
+        public ProbabilitySampler ProbSampler;
         private const double Alpha = 0.7;
 
         private int maxTelemetryItemsPerSecond;
@@ -47,20 +48,17 @@ namespace OpenTelemetry.Trace.Samplers
             this.Description = "AdaptiveSampler{" + maxTelemetryItemsPerSecond.ToString("F6", CultureInfo.InvariantCulture) + ", " + initialProbability.ToString("F6", CultureInfo.InvariantCulture) + "}";
 
             this.CheckMaxTelemetryItemsPerSecond(maxTelemetryItemsPerSecond);
-            this.ProbSampler = new ProbabilityActivitySampler(initialProbability);
+            this.ProbSampler = new ProbabilitySampler(initialProbability);
 
             // initial moving average
-            // if we assumed probability was 0.5 and we wanted 5 samples => we were expecting to
+            // if we assumed probability was 0.5 and we wanted 5 samples, we were expecting to
             // see 10 raw events, and smaple them at 50% probability to get to our 5. So the initial moving average
             // amounts to be being 10
             this.movingAverage = this.maxTelemetryItemsPerSecond / this.ProbSampler.GetProbability();
         }
 
         /// <inheritdoc />
-        public override string Description { get; }
-
-        /// <inheritdoc />
-        public override SamplingResult ShouldSample(in ActivitySamplingParameters samplingParameters)
+        public override SamplingResult ShouldSample(in SamplingParameters samplingParameters)
         {
             this.CalculateMovingAverage();
             return this.ProbSampler.ShouldSample(samplingParameters);
@@ -149,6 +147,11 @@ namespace OpenTelemetry.Trace.Samplers
                 this.currentEpoch = epoch;
                 this.itemsSampledIn = 1;
             }
+        }
+
+        public long GetItemsSampled()
+        {
+            return this.itemsSampledIn;
         }
     }
 }

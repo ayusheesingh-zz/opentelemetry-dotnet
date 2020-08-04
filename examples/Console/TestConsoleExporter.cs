@@ -11,8 +11,7 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.
-// </copyright>
+// limitations under the Licen// </copyright>
 
 using System;
 using System.Diagnostics;
@@ -20,11 +19,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using OpenTelemetry.Trace.Samplers;
 
 namespace Examples.Console
 {
     internal class TestConsoleExporter
     {
+        public static readonly AdaptiveSampler Sampler = new AdaptiveSampler(20, 0.5);
+
         internal static object Run(ConsoleOptions options)
         {
             // Enable TracerProvider for the source "MyCompany.MyProduct.MyWebServer"
@@ -32,70 +34,125 @@ namespace Examples.Console
             using var tracerProvider = OpenTelemetrySdk.CreateTracerProvider(
                 (builder) => builder.AddActivitySource("MyCompany.MyProduct.MyWebServer")
                     .SetResource(Resources.CreateServiceResource("MyServiceName"))
+                    .SetSampler(Sampler)
                     .UseConsoleExporter(opt => opt.DisplayAsJson = options.DisplayAsJson,
                                                 (p) => p.AddProcessor((next) => new MyProcessor(next))));
 
             // The above line is required only in applications
             // which decide to use Open Telemetry.
 
-            // Libraries would simply write the following lines of code to
-            // emit activities, which are the .NET representation of OT Spans.
-            var source = new ActivitySource("MyCompany.MyProduct.MyWebServer");
+            Thread[] threads = new Thread[6];
 
-            // The below commented out line shows more likely code in a real world webserver.
-            // using (var parent = source.StartActivity("HttpIn", ActivityKind.Server, HttpContext.Request.Headers["traceparent"] ))
-            using (var parent = source.StartActivity("HttpIn", ActivityKind.Server))
+            long result = 0;
+
+            for (int i = 0; i < threads.Length; i++)
             {
-                // TagNames can follow the OT guidelines
-                // from https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/trace/semantic_conventions
-                parent?.AddTag("http.method", "GET");
-                parent?.AddTag("http.host", "MyHostName");
-                if (parent != null)
+                threads[i] = new Thread(() =>
                 {
-                    parent.DisplayName = "HttpIn DisplayName";
+                    result = SampleThreadTest(5);
+                });
+            }
 
-                    // IsAllDataRequested is equivalent of Span.IsRecording
-                    if (parent.IsAllDataRequested)
-                    {
-                        parent.AddTag("expensive data", "This data is expensive to obtain. Avoid it if activity is not being recorded");
-                    }
-                }
+            foreach (Thread thread in threads)
+            {
+                thread.Start();
 
-                try
+                System.Console.WriteLine("thread {0} has result {1}", thread.ManagedThreadId, result);
+            }
+
+            foreach (Thread thread in threads)
+            {
+                thread.Join();
+            }
+
+            // System.Console.WriteLine("result from threads is: {0}", result);
+            return null;
+        }
+
+        private static long SampleThreadTest(int maxItemsAllowed)
+        {
+            long counter = 0;
+
+            for (int j = 0; j < 200; j++)
+            {
+                for (int i = 0; i < 10; i++)
                 {
-                    // Actual code to achieve the purpose of the library.
-                    // For websebserver example, this would be calling
-                    // user middlware pipeline.
+                    // System.Console.WriteLine("on span {0}", counter);
 
-                    // There can be child activities.
-                    // In this example HttpOut is a child of HttpIn.
-                    using (var child = source.StartActivity("HttpOut", ActivityKind.Client))
+                    // Libraries would simply write the following lines of code to
+                    // emit activities, which are the .NET representation of OT Spans.
+                    var source = new ActivitySource("MyCompany.MyProduct.MyWebServer");
+
+                    // The below commented out line shows more likely code in a real world webserver.
+                    // using (var parent = source.StartActivity("HttpIn", ActivityKind.Server, HttpContext.Request.Headers["traceparent"] ))
+                    using (var parent = source.StartActivity("HttpIn", ActivityKind.Server))
                     {
-                        child?.AddTag("http.url", "www.mydependencyapi.com");
+                        // counter += 1;
+
+                        SamplingParameters parameters = new SamplingParameters();
+                        SamplingResult result = Sampler.ShouldSample(parameters);
+                        if (result.IsSampled)
+                        {
+                            counter++;
+                            System.Console.WriteLine("num of items actually sampled: {0})", counter / 200);
+                        }
+
+                        // TagNames can follow the OT guidelines
+                        // from https://github.com/open-telemetry/opentelemetry-specification/tree/master/specification/trace/semantic_conventions
+                        parent?.AddTag("http.method", "GET");
+                        parent?.AddTag("http.host", "MyHostName");
+                        if (parent != null)
+                        {
+                            parent.DisplayName = "HttpIn DisplayName";
+
+                            // IsAllDataRequested is equivalent of Span.IsRecording
+                            if (parent.IsAllDataRequested)
+                            {
+                                parent.AddTag("expensive data", "This data is expensive to obtain. Avoid it if activity is not being recorded");
+                            }
+                        }
+
                         try
                         {
-                            // do actual work.
+                            // Actual code to achieve the purpose of the library.
+                            // For websebserver example, this would be calling
+                            // user middlware pipeline.
 
-                            child?.AddEvent(new ActivityEvent("sample activity event."));
-                            child?.AddTag("http.status_code", "200");
+                            // There can be child activities.
+                            // In this example HttpOut is a child of HttpIn.
+                            using (var child = source.StartActivity("HttpOut", ActivityKind.Client))
+                            {
+                                child?.AddTag("http.url", "www.mydependencyapi.com");
+                                try
+                                {
+                                    // do actual work.
+
+                                    child?.AddEvent(new ActivityEvent("sample activity event."));
+                                    child?.AddTag("http.status_code", "200");
+                                }
+                                catch (Exception)
+                                {
+                                    child?.AddTag("http.status_code", "500");
+                                }
+                            }
+
+                            parent?.AddTag("http.status_code", "200");
                         }
                         catch (Exception)
                         {
-                            child?.AddTag("http.status_code", "500");
+                            parent?.AddTag("http.status_code", "500");
                         }
                     }
 
-                    parent?.AddTag("http.status_code", "200");
-                }
-                catch (Exception)
-                {
-                    parent?.AddTag("http.status_code", "500");
+                    Thread.Sleep(1000 / 10);
+                    // System.Console.WriteLine("num items sampled in: {0}", Sampler.GetItemsSampled());
                 }
             }
 
+            // System.Console.WriteLine("Spans sampled: {0}", counter);
             System.Console.WriteLine("Press Enter key to exit.");
 
-            return null;
+            return Sampler.GetItemsSampled();
         }
 
         internal class MyProcessor : ActivityProcessor
